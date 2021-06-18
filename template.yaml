@@ -13,6 +13,12 @@ Resources:
     Properties:
       ThingName: ESPThemostat
   
+  ESPThemostatLog:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/iot/logs
+      RetentionInDays: 1
+  
   # ESPThemostatCertificate:
   #   Type: AWS::IoT::Certificate
   #   Properties:
@@ -72,7 +78,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - 'kinesis:*'
+                  - 'firehose:*'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
                 Resource: '*'
       RoleName: !Sub ${AppName}_kinesis_delivery_role
 
