@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: AWS IoT + Analytics Immerssion
+
+Parameters:
+  AppName:
+    Type: String
+    Default: jt-iot-engineering-immersion
+
+Resources:
+  ESPThemostat:
+    Type: AWS::IoT::Thing
+    Properties:
+      ThingName: ESPThemostat
+  
+  # ESPThemostatCertificate:
+  #   Type: AWS::IoT::Certificate
+  #   Properties:
+  #     Status: ACTIVE
+  #     CertificateMode: DEFAULT
+  #     CACertificatePem: 
+  
+  ESPThemostatCertAttachment:
+    Type: AWS::IoT::ThingPrincipalAttachment
+    Properties:
+      Principal: arn:aws:iot:eu-west-1:969581262818:cert/8532aa4c201c4c3b1aeb19b5ccb8279776b3649464ecc4040f840b31548b7706
+      ThingName: !Ref ESPThemostat
+
+  ESPThemostatPolicy:
+    Type: AWS::IoT::Policy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - iot:*
+            Resource: '*'
+      PolicyName: ESPThemostatPolicy
+  
+  ESPThemostatPoliycAttachment:
+    Type: AWS::IoT::PolicyPrincipalAttachment
+    Properties:
+      PolicyName: !Ref ESPThemostatPolicy
+      Principal: arn:aws:iot:eu-west-1:969581262818:cert/8532aa4c201c4c3b1aeb19b5ccb8279776b3649464ecc4040f840b31548b7706
+
+  ESPThemostatDataTargetS3:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      AccessControl: BucketOwnerFullControl
+      BucketName: !Sub ${AppName}-datalake
+
+  ESPThemostatKinesisRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: iot.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Description: Analytics delivery role to deliver the data to kinesis stream
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub ${AppName}_kinesis_delivery_policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kinesis:*'
+                Resource: '*'
+      RoleName: !Sub ${AppName}_kinesis_delivery_role
+
+  ESPThemostatDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub ${AppName}_firehose_delivery_policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:AbortMultipartUpload'
+                  - 's3:GetBucketLocation'
+                  - 's3:GetObject'
+                  - 's3:ListBucket'
+                  - '3:ListBucketMultipartUploads'
+                  - 's3:PutObject'
+                  - 'logs:*'
+                  - 'lambda:InvokeFunction'
+                Resource:
+                  - !Join 
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref ESPThemostatDataTargetS3
+                  - !Join 
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref ESPThemostatDataTargetS3
+                      - '/*'
+      RoleName: !Sub ${AppName}_firehose_delivery_role
+ 
+
+  ESPThemostatFirehoseDeliveryStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: !Sub ${AppName}-Analytics-firehose-stream
+      DeliveryStreamType: DirectPut
+      ExtendedS3DestinationConfiguration:
+        RoleARN : !GetAtt ESPThemostatDeliveryRole.Arn
+        BucketARN: !Join
+          - ''
+          - - 'arn:aws:s3:::'
+            - !Ref ESPThemostatDataTargetS3
+        BufferingHints:
+          SizeInMBs: 60
+          IntervalInSeconds: 60
+        CompressionFormat: GZIP
+
+  ESPTempTopicRule:
+    Type: AWS::IoT::TopicRule
+    Properties:
+      RuleName: ESPTempTopicRule
+      TopicRulePayload:
+        Actions:
+          - Firehose:
+              RoleArn: !GetAtt ESPThemostatKinesisRole.Arn
+              DeliveryStreamName: !Ref ESPThemostatFirehoseDeliveryStream
+        RuleDisabled: false
+        Sql: "SELECT * FROM 'espthemostat/temp'"
