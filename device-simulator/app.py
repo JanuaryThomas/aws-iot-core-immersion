@@ -7,10 +7,9 @@ from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient, AWSIoTMQTTClient
 sensor = None
 try:
     from SensorRead import *
-
     sensor = MLX90614()
 except ImportError:
-    pass
+    print("ImportError")
 
 
 def onMQTTMessage(message):
@@ -73,6 +72,7 @@ while True:
     try:
         data = {}
         data["temp"] = 0
+        print(data)
         if sensor is not None:
             sensor = sensor.get_object_temperature()
             print("Sensor-{}".format(data))
