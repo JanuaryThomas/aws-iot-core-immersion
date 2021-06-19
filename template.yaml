@@ -53,16 +53,14 @@ Resources:
             Version: 2012-10-17
             Statement:
               - Effect: Allow
-                Action:
-                  - '*:*'
+                Action: '*'
                 Resource: '*'
                 Condition:
                   StringLike:
                     s3:prefix:
                       - '*/'
               - Effect: Allow
-                Action:
-                  - '*:*'
+                Action: '*'
                 Resource: '*'
 
       RoleName: !Sub ${AppName}-IdentityPool-role
