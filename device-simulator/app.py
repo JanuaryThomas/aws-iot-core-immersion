@@ -75,6 +75,7 @@ while True:
         data["temp"] = 0
         if sensor is not None:
             sensor = sensor.get_object_temperature()
+            print("Sensor-{}".format(data))
             awsIoTMQTTClient.publishAsync(
                 "espthemostat/temp", json.dumps(data), 1, ackCallback=onPubackCallback
             )
