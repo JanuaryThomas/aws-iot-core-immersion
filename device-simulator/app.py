@@ -4,6 +4,14 @@ import json
 from datetime import datetime
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient, AWSIoTMQTTClient
 
+sensor = None
+try:
+    from SensorRead import *
+
+    sensor = MLX90614()
+except ImportError:
+    pass
+
 
 def onMQTTMessage(message):
     print("Received: message: {}, topic: {}".format(message.payload, message.topic))
@@ -20,7 +28,7 @@ PRIVATE_KEY = "certificates/8532aa4c20-private.pem.key"
 WEB_SOCKET = False
 CLIENT_ID = "Themostat-{}".format(uuid4())
 THING_NAME = "Themostat"
-PORT =443
+PORT = 443
 
 awsIoTMQTTShadowClient = None
 awsIoTMQTTShadowClient = AWSIoTMQTTShadowClient(CLIENT_ID)
@@ -57,22 +65,19 @@ def onPubackCallback(mid):
 
 
 # waterPumpShadow = "/things/{}/shadow/name/waterPumpShadow".format(THING_NAME)
-shadowHandler = awsIoTMQTTShadowClient.createShadowHandlerWithName(
-    "Fan", True
-)
-
+shadowHandler = awsIoTMQTTShadowClient.createShadowHandlerWithName("Fan", True)
 
 
 count = 0
-while count < 100:
+while True:
     try:
         data = {}
-        data["open"] = count
-        print("Count: {}".format(count))
-        count = count + 1
-        awsIoTMQTTClient.publishAsync(
-            'espthemostat/temp', json.dumps(data), 1, ackCallback=onPubackCallback
-        )
+        data["temp"] = 0
+        if sensor is not None:
+            sensor = sensor.get_object_temperature()
+            awsIoTMQTTClient.publishAsync(
+                "espthemostat/temp", json.dumps(data), 1, ackCallback=onPubackCallback
+            )
         time.sleep(2)
     except Exception as e:
         print("Error: {}".format(e))
