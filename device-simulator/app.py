@@ -67,7 +67,7 @@ count = 0
 while count < 100:
     try:
         data = {}
-        data["open"] = 2
+        data["open"] = count
         print("Count: {}".format(count))
         count = count + 1
         awsIoTMQTTClient.publishAsync(
