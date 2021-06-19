@@ -72,11 +72,6 @@ class MLX90614:
     def get_object_temperature(self) -> float:
         data: hex = self.read_register(self.MLX90614_TOBJ1)
         return self.data_to_temp(data)
-try:
-    from .sensorRead import *
-    sensor = MLX90614()
-except ImportError:
-    print("ImportError")
 
 
 def onMQTTMessage(message):
@@ -139,9 +134,11 @@ while True:
     try:
         data = {}
         data["temp"] = 0
+        data["timestamp"] = time.time()
         sensor = MLX90614()
         if sensor is not None:
             sensor = sensor.get_object_temperature()
+            data["temp"] = sensor
             print("Sensor-{}".format(data))
             awsIoTMQTTClient.publishAsync(
                 "espthemostat/temp", json.dumps(data), 1, ackCallback=onPubackCallback
