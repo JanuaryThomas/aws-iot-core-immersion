@@ -221,7 +221,7 @@ Resources:
         Sql: "SELECT * FROM 'espthemostat/temp'"
 
   ESPCognitoUserPool:
-    Type: AWS::Cognito::UserPoolz
+    Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub ${AppName}-ESPCognitoUserPool
       Policies:
@@ -246,5 +246,9 @@ Resources:
       AllowedOAuthFlows: [ "code", "implicit" ]
       ExplicitAuthFlows: [ "ALLOW_CUSTOM_AUTH", "ALLOW_REFRESH_TOKEN_AUTH","ALLOW_USER_PASSWORD_AUTH" ,"ALLOW_USER_SRP_AUTH" ]
       AllowedOAuthScopes: [ "aws.cognito.signin.user.admin",  "email", "openid",  "phone",  "profile" ]
+      CallbackURLs:
+        - http://localhost
+      LogoutURLs:
+        - http://localhost
       SupportedIdentityProviders:
         - COGNITO
