@@ -12,18 +12,22 @@ Resources:
     Type: AWS::IoT::Thing
     Properties:
       ThingName: ESPThemostat
-  
+
   ESPThemostatLog:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/iot/logs
       RetentionInDays: 1
-  
+
   ESPThemostatIdentiyPool:
     Type: AWS::Cognito::IdentityPool
     Properties:
       AllowUnauthenticatedIdentities: true
       IdentityPoolName: !Sub ${AppName}-IdentityPool
+      CognitoIdentityProviders:
+        - ClientId: !Ref ESPCognitoUserPoolClient
+          ProviderName: !GetAtt ESPCognitoUserPool.ProviderName
+          ServerSideTokenCheck: true
 
   ESPThemostatIdentityPoolRole:
     Type: AWS::IAM::Role
@@ -60,7 +64,7 @@ Resources:
                 Action:
                   - '*:*'
                 Resource: '*'
-      
+
       RoleName: !Sub ${AppName}-IdentityPool-role
       # Tags:
       #   - Key: bnb:environment-type
@@ -86,8 +90,8 @@ Resources:
   #   Properties:
   #     Status: ACTIVE
   #     CertificateMode: DEFAULT
-  #     CACertificatePem: 
-  
+  #     CACertificatePem:
+
   ESPThemostatCertAttachment:
     Type: AWS::IoT::ThingPrincipalAttachment
     Properties:
@@ -105,7 +109,7 @@ Resources:
               - iot:*
             Resource: '*'
       PolicyName: ESPThemostatPolicy
-  
+
   ESPThemostatPoliycAttachment:
     Type: AWS::IoT::PolicyPrincipalAttachment
     Properties:
@@ -176,17 +180,17 @@ Resources:
                   - 'logs:*'
                   - 'lambda:InvokeFunction'
                 Resource:
-                  - !Join 
+                  - !Join
                     - ''
                     - - 'arn:aws:s3:::'
                       - !Ref ESPThemostatDataTargetS3
-                  - !Join 
+                  - !Join
                     - ''
                     - - 'arn:aws:s3:::'
                       - !Ref ESPThemostatDataTargetS3
                       - '/*'
       RoleName: !Sub ${AppName}_firehose_delivery_role
- 
+
 
   ESPThemostatFirehoseDeliveryStream:
     Type: AWS::KinesisFirehose::DeliveryStream
@@ -194,7 +198,7 @@ Resources:
       DeliveryStreamName: !Sub ${AppName}-Analytics-firehose-stream
       DeliveryStreamType: DirectPut
       ExtendedS3DestinationConfiguration:
-        RoleARN : !GetAtt ESPThemostatDeliveryRole.Arn
+        RoleARN: !GetAtt ESPThemostatDeliveryRole.Arn
         BucketARN: !Join
           - ''
           - - 'arn:aws:s3:::'
@@ -215,3 +219,32 @@ Resources:
               DeliveryStreamName: !Ref ESPThemostatFirehoseDeliveryStream
         RuleDisabled: false
         Sql: "SELECT * FROM 'espthemostat/temp'"
+
+  ESPCognitoUserPool:
+    Type: AWS::Cognito::UserPoolz
+    Properties:
+      UserPoolName: !Sub ${AppName}-ESPCognitoUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+
+  ESPCognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref ESPCognitoUserPool
+      ClientName: !Sub ${AppName}-ESPCognitoUserPoolClient
+      GenerateSecret: false
+      IdTokenValidity: 43200
+      TokenValidityUnits:
+        IdToken: "seconds"
+      AllowedOAuthFlows: [ "code", "implicit" ]
+      ExplicitAuthFlows: [ "ALLOW_CUSTOM_AUTH", "ALLOW_REFRESH_TOKEN_AUTH","ALLOW_USER_PASSWORD_AUTH" ,"ALLOW_USER_SRP_AUTH" ]
+      AllowedOAuthScopes: [ "aws.cognito.signin.user.admin",  "email", "openid",  "phone",  "profile" ]
+      SupportedIdentityProviders:
+        - COGNITO
