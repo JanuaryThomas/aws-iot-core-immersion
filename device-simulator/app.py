@@ -6,7 +6,7 @@ from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTShadowClient, AWSIoTMQTTClient
 
 sensor = None
 try:
-    from SensorRead import *
+    from sensorRead import *
     sensor = MLX90614()
 except ImportError:
     print("ImportError")
