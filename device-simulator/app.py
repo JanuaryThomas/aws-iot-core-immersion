@@ -134,7 +134,7 @@ while True:
     try:
         data = {}
         data["data"] = 0
-        data["timestamp"] = time.time()
+        data["timestamp"] = int(time.time())
         sensor = MLX90614()
         if sensor is not None:
             sensor = sensor.get_object_temperature()
