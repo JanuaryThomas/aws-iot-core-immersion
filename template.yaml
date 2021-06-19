@@ -19,6 +19,68 @@ Resources:
       LogGroupName: /aws/iot/logs
       RetentionInDays: 1
   
+  ESPThemostatIdentiyPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      AllowUnauthenticatedIdentities: true
+      IdentityPoolName: !Sub ${AppName}-IdentityPool
+
+  ESPThemostatIdentityPoolRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action:
+              - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref ESPThemostatIdentiyPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: unauthenticated
+      Description: AIM policy for Identity pool to access AWS resources
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AppName}-IdentityPool-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - '*:*'
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - '*/'
+              - Effect: Allow
+                Action:
+                  - '*:*'
+                Resource: '*'
+      
+      RoleName: !Sub ${AppName}-IdentityPool-role
+      # Tags:
+      #   - Key: bnb:environment-type
+      #     Value: dev
+      #   - Key: bnb:country
+      #     Value: TZ
+      #   - Key: bnb:application
+      #     Value: Cognito Identity Pool
+      #   - Key: bnb:appversion
+      #     Value: V1.1
+
+  bnbIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref ESPThemostatIdentiyPool
+      Roles:
+        authenticated: !GetAtt ESPThemostatIdentityPoolRole.Arn
+        unauthenticated: !GetAtt ESPThemostatIdentityPoolRole.Arn
+
+
   # ESPThemostatCertificate:
   #   Type: AWS::IoT::Certificate
   #   Properties:
