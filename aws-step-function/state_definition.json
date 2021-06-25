@@ -1,0 +1,67 @@
+{
+  "Comment": "Start first State",
+  "StartAt": "StateA",
+  "States": {
+    "StateA": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111122223333:function:HelloFunction",
+      "Next": "StateB"
+    },
+    "StateB": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.IsSuccess",
+          "BooleanEquals": true,
+          "Next": "StateC"
+        },
+        {
+          "Variable": "$.IsSuccess",
+          "BooleanEquals": false,
+          "Next": "StateD"
+        }
+      ],
+      "Default": "StateC"
+    },
+    "StateC": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111122223333:function:HelloFunction",
+      "End": true
+    },
+    "StateD": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:111122223333:function:HelloFunction",
+      "Next": "Parallel State"
+    },
+    "Parallel State": {
+      "Comment": "A parallel state",
+      "Type": "Parallel",
+      "Next": "StateG",
+      "Branches": [
+        {
+          "StartAt": "StateE",
+          "States": {
+            "StateE": {
+              "Type": "Pass",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "StateF",
+          "States": {
+            "StateF": {
+              "Type": "Pass",
+              "End": true
+            }
+          }
+        }
+      ]
+    },
+    "StateG": {
+        "Type": "Task",
+        "Resource": "arn:aws:lambda:us-east-1:111122223333:function:HelloFunction",
+        "End": true
+      }
+  }
+}

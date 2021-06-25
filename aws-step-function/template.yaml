@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+
+Parameters:
+  AppCode:
+    Type: String
+    Default: mgas-sandpit-datalake
+  
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.8
+    Timeout: 900
+    MemorySize: 10240
+    Tracing: Active
+
+Resources:
+
+  StatesRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+              - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: AIM policy
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AppCode}-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: 
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - sns:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: '*'
+      RoleName: !Sub ${AppCode}-lambda-execution-role
+  StateA:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: StateA
+      CodeUri: lambdas/mgas/stateA/
+      Role: !GetAtt StatesRole.Arn
