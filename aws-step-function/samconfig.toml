@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "jt-step-function"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-17fpt7nd0es84"
+s3_prefix = "jt-step-function"
+region = "eu-west-1"
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = "AppCode=\"jt-step-function\""

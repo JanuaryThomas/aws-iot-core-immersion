@@ -51,9 +51,78 @@ Resources:
                   - logs:*
                 Resource: '*'
       RoleName: !Sub ${AppCode}-lambda-execution-role
+  StatesMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+              - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: AIM policy
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AppCode}-lambda-policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:*
+                Resource: 
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - sns:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                Resource: '*'
+      RoleName: !Sub ${AppCode}-steps-execution-role
   StateA:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: StateA
-      CodeUri: lambdas/mgas/stateA/
+      CodeUri: lambdas/stateA/
       Role: !GetAtt StatesRole.Arn
+  StateB:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: StateB
+      CodeUri: lambdas/stateB/
+      Role: !GetAtt StatesRole.Arn
+      
+  StateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      DefinitionString: !Sub |-
+        {
+          "Comment": "Start first State",
+          "StartAt": "StateA",
+          "States": {
+            "StateA": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StateA}",
+              "Next": "StateB"
+            },
+            "StateB": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StateB}",
+              "End": true
+            }
+          }
+        }
+      RoleArn: !GetAtt StatesMachineRole.Arn
+      StateMachineName: StateMachine-JOBS
+      TracingConfiguration:
+        Enabled: false
+  
