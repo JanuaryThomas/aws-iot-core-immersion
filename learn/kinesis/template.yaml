@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: AWS HPC Distibuted Systems
+
+Parameters:
+  AppName:
+    Type: String
+    Default: jt-kinesis-hpc-consumers
+
+Globals:
+  Function:
+    Handler: app.handler
+    Runtime: python3.8
+    Timeout: 840
+    MemorySize: 512
+    Tracing: Active
+
+Resources:
+  KinesisIoTStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: KinesisIoTStream
+      RetentionPeriodHours: 48
+      ShardCount: 1
+  
+  KinesisIoTStreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Description: Analytics delivery role to deliver the data to kinesis stream
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub ${AppName}_kinesis_policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kinesis:*'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'logs:*'
+                Resource: '*'
+      RoleName: !Sub ${AppName}_kinesis_role
+  KinesisConsumer:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: KinesisConsumer
+      CodeUri: lambdas/consumer/
+      Role: !GetAtt KinesisIoTStreamRole.Arn
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt KinesisIoTStream.Arn
+            BatchSize: 100
+            StartingPosition: LATEST
